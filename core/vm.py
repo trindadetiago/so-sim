@@ -30,12 +30,6 @@ class VM:
                     self.scheduler.process_completed(process)
                     break
 
-                # Verificar se a memória física está cheia e mover o processo para a memória virtual
-                if self.memory_manager and len(self.memory_manager.physical_memory) >= self.memory_manager.max_physical_memory:
-                    # Mover o processo para a memória virtual e simular o delay
-                    self.memory_manager.move_to_virtual_memory(process)
-                    self.memory_manager.simulate_copy_delay()
-
             # Verifica se todas as filas estão vazias ou todos os processos foram finalizados
             if all(p.state == ProcessState.FINALIZADO for queue in self.scheduler.ready_queues for p in queue):
                 print("Todos os processos foram finalizados.")

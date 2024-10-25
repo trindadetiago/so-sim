@@ -14,8 +14,7 @@ class CLI:
         """
         self.process_manager = ProcessManager()
         self.memory_manager = MemoryManager(max_physical_memory=3)  # Definindo o tamanho da memória física no código
-        self.scheduler = Scheduler(algorithms=[SchedulingAlgorithm.FIFO, 
-                                               SchedulingAlgorithm.SJF])
+        self.scheduler = Scheduler(algorithms=[SchedulingAlgorithm.SJF])
         self.vm = VM(self.scheduler, self.memory_manager)  # Passando o gerenciador de memória para a VM
 
     def load_process_from_file(self, file_path):
