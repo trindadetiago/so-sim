@@ -10,48 +10,49 @@ class SchedulingAlgorithm(Enum):
 
 # Escalonador de Processos com múltiplos algoritmos
 class Scheduler:
-    def __init__(self, algorithm=SchedulingAlgorithm.FIFO, quantum=2):
-        self.ready_queue = deque()
-        self.algorithm = algorithm
+    def __init__(self, algorithms, quantum=2):
+        # Algoritmos é uma lista de algoritmos para cada nível de fila hierárquica
+        self.ready_queues = [deque() for _ in algorithms]
+        self.algorithms = algorithms
         self.quantum = quantum
-
-    def add_process(self, process):
+    
+    def add_process(self, process, priority=0):
         """
-        Adiciona um processo à fila de prontos.
+        Adiciona um processo à fila de prontos de acordo com a prioridade.
         """
-        self.ready_queue.append(process)
-        print(f"Processo {process.name} com PID {process.pid} adicionado à fila de prontos")
-
+        self.ready_queues[priority].append(process)
+        print(f"Processo {process.name} com PID {process.pid} adicionado à fila de prioridade {priority}")
+    
     def get_next_process(self):
         """
-        Seleciona o próximo processo a ser executado de acordo com o algoritmo de escalonamento escolhido.
+        Seleciona o próximo processo baseado nas filas hierárquicas.
         """
-        if not self.ready_queue:
-            print("Sem processos na fila de prontos")
-            return None
+        for i, queue in enumerate(self.ready_queues):
+            if queue:
+                algorithm = self.algorithms[i]
+                if algorithm == SchedulingAlgorithm.FIFO:
+                    return self._schedule_fifo(queue)
+                elif algorithm == SchedulingAlgorithm.ROUND_ROBIN:
+                    return self._schedule_round_robin(queue)
+                elif algorithm == SchedulingAlgorithm.SJF:
+                    return self._schedule_sjf(queue)
+        return None
 
-        if self.algorithm == SchedulingAlgorithm.FIFO:
-            return self._schedule_fifo()
-        elif self.algorithm == SchedulingAlgorithm.ROUND_ROBIN:
-            return self._schedule_round_robin()
-        elif self.algorithm == SchedulingAlgorithm.SJF:
-            return self._schedule_sjf()
-
-    def _schedule_fifo(self):
+    def _schedule_fifo(self, queue):
         """
         Algoritmo FIFO: retorna o próximo processo na fila de prontos.
         """
-        next_process = self.ready_queue.popleft()
+        next_process = queue.popleft()  # Usa a fila fornecida
         next_process.state = ProcessState.EXECUTANDO
         print(f"Processo {next_process.name} com PID {next_process.pid} está sendo executado.")
         return next_process
 
-    def _schedule_round_robin(self):
+    def _schedule_round_robin(self, queue):
         """
         Algoritmo Round Robin: retorna o próximo processo na fila de prontos e move o processo para o fim da fila
         se não terminar no quantum.
         """
-        next_process = self.ready_queue.popleft()
+        next_process = queue.popleft()  # Usa a fila fornecida
         next_process.state = ProcessState.EXECUTANDO
         print(f"Processo {next_process.name} com PID {next_process.pid} está sendo executado")
 
@@ -59,7 +60,7 @@ class Scheduler:
         if remaining_instructions > self.quantum:
             # Executa até o quantum e depois move o processo para o final da fila
             next_process.program_counter += self.quantum
-            self.ready_queue.append(next_process)
+            queue.append(next_process)  # Move o processo para o final da fila
             print(f"Processo {next_process.name} não finalizou dentro do quantum e foi para o final da fila")
         else:
             # Executa as instruções restantes e termina o processo
@@ -69,31 +70,37 @@ class Scheduler:
 
         return next_process
 
-
-    def _schedule_sjf(self):
+    def _schedule_sjf(self, queue):
         """
         Algoritmo SJF: seleciona o processo com o menor número de instruções restantes.
         """
-        next_process = min(self.ready_queue, key=lambda p: len(p.instructions) - p.program_counter)
-        self.ready_queue.remove(next_process)
+        next_process = min(queue, key=lambda p: len(p.instructions) - p.program_counter)
+        queue.remove(next_process)  # Remove o processo selecionado da fila
         next_process.state = ProcessState.EXECUTANDO
         print(f"Processo {next_process.name} com PID {next_process.pid} (Shortest Job) está sendo executado")
         return next_process
 
     def process_completed(self, process):
         """
-        Marca um processo como terminado.
+        Marca um processo como terminado e o remove da fila de prontos.
         """
         process.state = ProcessState.FINALIZADO
+        # Remove o processo das filas de prontos
+        for queue in self.ready_queues:
+            if process in queue:
+                queue.remove(process)
+                break
         print(f"Processo {process.name} com PID {process.pid} completou a execução")
 
     def display_ready_queue(self):
         """
-        Exibe os processos na fila de prontos.
+        Exibe os processos em todas as filas de prontos.
         """
-        if self.ready_queue:
-            print("Ready Queue:")
-            for process in self.ready_queue:
-                print(f"  PID: {process.pid}, Nome: {process.name}, Estado: {process.state.name}")
-        else:
-            print("Fila de prontos está vazia")
+        print("Filas de prontos:")
+        for priority, queue in enumerate(self.ready_queues):
+            if queue:
+                print(f"  Fila de prioridade {priority}:")
+                for process in queue:
+                    print(f"    PID: {process.pid}, Nome: {process.name}, Estado: {process.state.name}")
+            else:
+                print(f"  Fila de prioridade {priority} está vazia")

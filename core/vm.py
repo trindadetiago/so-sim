@@ -1,8 +1,10 @@
 from core.process import ProcessState
+import time
 
 class VM:
-    def __init__(self, scheduler):
+    def __init__(self, scheduler, memory_manager=None):
         self.scheduler = scheduler
+        self.memory_manager = memory_manager
 
     def execute(self):
         """
@@ -12,7 +14,12 @@ class VM:
             # Obtém o próximo processo a ser executado
             process = self.scheduler.get_next_process()
             if not process:
+                print("Nenhum processo restante para executar.")
                 break  # Nenhum processo restante para executar
+
+            # Verifica se o processo já foi finalizado
+            if process.state == ProcessState.FINALIZADO:
+                continue
 
             # Ciclo de execução do processo
             while process.state == ProcessState.EXECUTANDO:
@@ -23,10 +30,24 @@ class VM:
                     self.scheduler.process_completed(process)
                     break
 
+                # Verificar se a memória física está cheia e mover o processo para a memória virtual
+                if self.memory_manager and len(self.memory_manager.physical_memory) >= self.memory_manager.max_physical_memory:
+                    # Mover o processo para a memória virtual e simular o delay
+                    self.memory_manager.move_to_virtual_memory(process)
+                    self.memory_manager.simulate_copy_delay()
+
+            # Verifica se todas as filas estão vazias ou todos os processos foram finalizados
+            if all(p.state == ProcessState.FINALIZADO for queue in self.scheduler.ready_queues for p in queue):
+                print("Todos os processos foram finalizados.")
+                break
+
     def execute_instruction(self, process):
         """
         Executa a instrução atual do processo.
         """
+        if process.state == ProcessState.FINALIZADO:
+            return  # Não executar instruções de um processo finalizado
+
         instruction = process.instructions[process.program_counter]
         print(f"Executando instrução: {instruction} para processo PID {process.pid}")
 
@@ -41,11 +62,10 @@ class VM:
             self.execute_sub(process, instruction)
         elif instruction.startswith("MUL"):
             self.execute_mul(process, instruction)
-        elif instruction.startswith("JMP"):
-            self.execute_jump(process, instruction)
 
         # Atualiza o contador de programa (PC)
         process.program_counter += 1
+
 
     def execute_load(self, process, instruction):
         """
@@ -77,7 +97,7 @@ class VM:
         """
         _, value = instruction.split()
         process.registers['ACC'] -= int(value)
-        print(f"Processo PID {process.pid}: Subtraido {value} do ACC. Novo valor de ACC: {process.registers['ACC']}")
+        print(f"Processo PID {process.pid}: Subtraído {value} do ACC. Novo valor de ACC: {process.registers['ACC']}")
 
     def execute_mul(self, process, instruction):
         """
@@ -87,10 +107,3 @@ class VM:
         process.registers['ACC'] *= int(value)
         print(f"Processo PID {process.pid}: Multiplicado {value} pelo ACC. Novo valor de ACC: {process.registers['ACC']}")
 
-    def execute_jump(self, process, instruction):
-        """
-        Simula a execução da instrução JMP.
-        """
-        _, address = instruction.split()
-        process.program_counter = int(address) - 1  # Ajusta o PC para a nova posição
-        print(f"Processo PID {process.pid}: Pulando para instrução no endereço {address}")

@@ -36,6 +36,7 @@ class ProcessManager:
         self.processes[process.pid] = process
         self.ready_queue.append(process)
         print(f"Processo {process.name} criado com PID {process.pid}")
+        return process  # Retorna o processo criado
 
     def terminate_process(self, pid):
         process = self.processes.get(pid)
